@@ -1,12 +1,20 @@
 'use client';
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import styles from "./page.module.css";
 
 export default function Home() {
+  const router = useRouter();
   const [time, setTime] = useState(new Date());
   const [weather, setWeather] = useState("");
   const [spaceImage, setSpaceImage] = useState("");
+  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [loginData, setLoginData] = useState({
+    username: '',
+    password: ''
+  });
+  const [loginError, setLoginError] = useState('');
 
   useEffect(() => {
     // Update time every second
@@ -85,11 +93,101 @@ export default function Home() {
   const minuteDegrees = minutes * 6 + seconds * 0.1;
   const secondDegrees = seconds * 6;
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoginError('');
+
+    try {
+      const response = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(loginData),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setShowLoginPopup(false);
+        // 로그인 성공 후 처리
+      } else {
+        if (data.error === 'INVALID_PASSWORD') {
+          setLoginError('비밀번호가 일치하지 않습니다.');
+        } else if (data.error === 'USER_NOT_FOUND') {
+          setLoginError('회원이 아닙니다.');
+        } else {
+          setLoginError('로그인 중 오류가 발생했습니다.');
+        }
+      }
+    } catch (error) {
+      setLoginError('서버 오류가 발생했습니다.');
+    }
+  };
+
+  const handleLoginChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setLoginData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
   return (
     <div className={styles.page}>
+      <button 
+        onClick={() => setShowLoginPopup(true)}
+        className={styles.loginButton}
+      >
+        로그인
+      </button>
+
+      {showLoginPopup && (
+        <div className={styles.popup}>
+          <div className={styles.popupContent}>
+            <h2>로그인</h2>
+            <form onSubmit={handleLogin} className={styles.loginForm}>
+              <div className={styles.inputGroup}>
+                <input
+                  type="text"
+                  name="username"
+                  value={loginData.username}
+                  onChange={handleLoginChange}
+                  placeholder="아이디"
+                  required
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <input
+                  type="password"
+                  name="password"
+                  value={loginData.password}
+                  onChange={handleLoginChange}
+                  placeholder="비밀번호"
+                  required
+                />
+              </div>
+              {loginError && <div className={styles.error}>{loginError}</div>}
+              <div className={styles.buttonGroup}>
+                <button type="submit" className={styles.loginSubmitButton}>
+                  로그인하기
+                </button>
+                <button 
+                  type="button" 
+                  className={styles.signupButton}
+                  onClick={() => router.push('/sign-up')}
+                >
+                  회원가입
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
       <main className={styles.main}>
         <h1 className={styles.title}>조민하의 페이지</h1>
-        
+
         <div className={styles.infoContainer}>
           <div className={styles.infoBox}>
             <h2>현재 시간</h2>
